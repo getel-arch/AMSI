@@ -3,8 +3,15 @@
 #include <amsi.h>       // from Windows SDK
 #include <strsafe.h>
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    // Check if argument is provided
+    if (argc < 2) {
+        printf("Usage: %s <string_to_scan>\n", argv[0]);
+        printf("Example: %s \"Write-Host 'Hello World'\"\n", argv[0]);
+        return 1;
+    }
+
     HAMSICONTEXT ctx = NULL;
     HAMSISESSION session = 0;
     HRESULT hr;
@@ -30,9 +37,9 @@ int main(void)
         return 1;
     }
 
-    // String to scan (ANSI)
-    const char *text = "Write-Host 'Invoke-Mimikatz'";
-    WCHAR textW[256];
+    // String to scan from command line argument
+    const char *text = argv[1];
+    WCHAR textW[1024];  // Increased buffer size for longer inputs
     MultiByteToWideChar(CP_ACP, 0, text, -1, textW, ARRAYSIZE(textW));
 
     WCHAR contentNameW[] = L"TestInput";
