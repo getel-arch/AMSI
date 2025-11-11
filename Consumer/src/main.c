@@ -31,7 +31,7 @@ int main(void)
     }
 
     // String to scan (ANSI)
-    const char *text = "Write-Host 'Hello AMSI'";
+    const char *text = "Write-Host 'Invoke-Mimikatz'";
     WCHAR textW[256];
     MultiByteToWideChar(CP_ACP, 0, text, -1, textW, ARRAYSIZE(textW));
 
