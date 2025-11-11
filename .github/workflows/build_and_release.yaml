@@ -28,13 +28,23 @@ jobs:
         arch: x64
 
     - name: Create Output Directory
-      run: New-Item -ItemType Directory -Path .\output
+      run: |
+        New-Item -ItemType Directory -Path .\output -Force
+        New-Item -ItemType Directory -Path .\Provider\src -Force
 
     - name: Compile 64bit Binary
       run: |
         cl.exe .\Consumer\src\main.c /Fe:.\output\amsi_consumer_x64.exe /O2 amsi.lib
         if (-not (Test-Path .\output\amsi_consumer_x64.exe)) {
-          Write-Error "Compilation failed - executable not created"
+          Write-Error "Consumer compilation failed - executable not created"
+          exit 1
+        }
+
+    - name: Compile Provider DLL
+      run: |
+        cl.exe .\Provider\src\main.cpp /Fe:.\output\amsi_provider_x64.dll /LD /O2 /DEF:.\Provider\src\provider.def ole32.lib oleaut32.lib
+        if (-not (Test-Path .\output\amsi_provider_x64.dll)) {
+          Write-Error "Provider compilation failed - DLL not created"
           exit 1
         }
 
