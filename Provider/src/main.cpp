@@ -158,10 +158,9 @@ public:
         return S_OK;
     }
 
-    STDMETHODIMP CloseSession(ULONGLONG sessionId) override
+    STDMETHODIMP_(void) CloseSession(ULONGLONG sessionId) override
     {
         // Clean up session-specific resources
-        return S_OK;
     }
 
     STDMETHODIMP DisplayName(LPWSTR* displayName) override
@@ -177,6 +176,62 @@ public:
             return E_OUTOFMEMORY;
             
         wcscpy_s(*displayName, nameLen, name);
+        return S_OK;
+    }
+};
+
+// Class factory for creating AmsiProvider instances
+class AmsiProviderFactory : public IClassFactory
+{
+private:
+    ULONG m_refCount;
+    
+public:
+    AmsiProviderFactory() : m_refCount(1) {}
+    
+    // IUnknown methods
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppvObject) override
+    {
+        if (riid == IID_IUnknown || riid == IID_IClassFactory)
+        {
+            *ppvObject = this;
+            AddRef();
+            return S_OK;
+        }
+        *ppvObject = nullptr;
+        return E_NOINTERFACE;
+    }
+    
+    STDMETHODIMP_(ULONG) AddRef() override
+    {
+        return InterlockedIncrement(&m_refCount);
+    }
+    
+    STDMETHODIMP_(ULONG) Release() override
+    {
+        ULONG count = InterlockedDecrement(&m_refCount);
+        if (count == 0)
+            delete this;
+        return count;
+    }
+    
+    // IClassFactory methods
+    STDMETHODIMP CreateInstance(IUnknown* pUnkOuter, REFIID riid, void** ppvObject) override
+    {
+        if (pUnkOuter != nullptr)
+            return CLASS_E_NOAGGREGATION;
+            
+        AmsiProvider* provider = new AmsiProvider();
+        if (!provider)
+            return E_OUTOFMEMORY;
+            
+        HRESULT hr = provider->QueryInterface(riid, ppvObject);
+        provider->Release();
+        return hr;
+    }
+    
+    STDMETHODIMP LockServer(BOOL fLock) override
+    {
         return S_OK;
     }
 };
@@ -325,25 +380,25 @@ extern "C" HRESULT __stdcall DllRegisterServer(void)
 {
     // Registry entries for AMSI provider
     const wchar_t* clsidStr = L"{12345678-1234-1234-1234-123456789012}";
-    wchar_t keyPath[256];
+    char keyPath[256];
     HKEY hKey;
     
     // Register CLSID
-    swprintf_s(keyPath, L"CLSID\\%s", clsidStr);
-    if (RegCreateKeyEx(HKEY_CLASSES_ROOT, keyPath, 0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr) == ERROR_SUCCESS)
+    sprintf_s(keyPath, "CLSID\\{12345678-1234-1234-1234-123456789012}");
+    if (RegCreateKeyExA(HKEY_CLASSES_ROOT, keyPath, 0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr) == ERROR_SUCCESS)
     {
-        RegSetValueEx(hKey, nullptr, 0, REG_SZ, (BYTE*)L"Custom AMSI Provider", sizeof(L"Custom AMSI Provider"));
+        RegSetValueExA(hKey, nullptr, 0, REG_SZ, (BYTE*)"Custom AMSI Provider", sizeof("Custom AMSI Provider"));
         RegCloseKey(hKey);
     }
     
     // Register InprocServer32
-    swprintf_s(keyPath, L"CLSID\\%s\\InprocServer32", clsidStr);
-    if (RegCreateKeyEx(HKEY_CLASSES_ROOT, keyPath, 0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr) == ERROR_SUCCESS)
+    sprintf_s(keyPath, "CLSID\\{12345678-1234-1234-1234-123456789012}\\InprocServer32");
+    if (RegCreateKeyExA(HKEY_CLASSES_ROOT, keyPath, 0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr) == ERROR_SUCCESS)
     {
-        wchar_t modulePath[MAX_PATH];
-        GetModuleFileName(GetModuleHandle(nullptr), modulePath, MAX_PATH);
-        RegSetValueEx(hKey, nullptr, 0, REG_SZ, (BYTE*)modulePath, (DWORD)((wcslen(modulePath) + 1) * sizeof(wchar_t)));
-        RegSetValueEx(hKey, L"ThreadingModel", 0, REG_SZ, (BYTE*)L"Both", sizeof(L"Both"));
+        char modulePath[MAX_PATH];
+        GetModuleFileNameA(GetModuleHandleA(nullptr), modulePath, MAX_PATH);
+        RegSetValueExA(hKey, nullptr, 0, REG_SZ, (BYTE*)modulePath, (DWORD)(strlen(modulePath) + 1));
+        RegSetValueExA(hKey, "ThreadingModel", 0, REG_SZ, (BYTE*)"Both", sizeof("Both"));
         RegCloseKey(hKey);
     }
     
@@ -352,11 +407,8 @@ extern "C" HRESULT __stdcall DllRegisterServer(void)
 
 extern "C" HRESULT __stdcall DllUnregisterServer(void)
 {
-    const wchar_t* clsidStr = L"{12345678-1234-1234-1234-123456789012}";
-    wchar_t keyPath[256];
-    
-    swprintf_s(keyPath, L"CLSID\\%s", clsidStr);
-    RegDeleteTree(HKEY_CLASSES_ROOT, keyPath);
+    const char* keyPath = "CLSID\\{12345678-1234-1234-1234-123456789012}";
+    RegDeleteTreeA(HKEY_CLASSES_ROOT, keyPath);
     
     return S_OK;
 }
