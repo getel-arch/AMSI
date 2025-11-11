@@ -42,7 +42,7 @@ jobs:
 
     - name: Compile Provider DLL
       run: |
-        cl.exe .\Provider\src\main.cpp /Fe:.\output\amsi_provider_x64.dll /LD /O2 /DEF:.\Provider\src\provider.def ole32.lib oleaut32.lib
+        cl.exe .\Provider\src\main.cpp /Fe:.\output\amsi_provider_x64.dll /LD /O2 /DEF:.\Provider\src\provider.def ole32.lib oleaut32.lib advapi32.lib
         if (-not (Test-Path .\output\amsi_provider_x64.dll)) {
           Write-Error "Provider compilation failed - DLL not created"
           exit 1
